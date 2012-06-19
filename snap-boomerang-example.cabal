@@ -26,18 +26,21 @@ Executable snap-boomerang-example
     heist >= 0.8 && < 0.9,
     MonadCatchIO-transformers >= 0.2.1 && < 0.4,
     mtl >= 2 && < 3,
-    snap == 0.8.*,
-    snap-core   == 0.8.*,
-    snap-server == 0.8.*,
+    snap == 0.9.*,
+    snap-core   == 0.9.*,
+    snap-server == 0.9.*,
+    snap-loader-static == 0.9.*,
     text >= 0.11 && < 0.12,
     time >= 1.1 && < 1.5,
-    xmlhtml == 0.1.*,
+    xmlhtml >= 0.1,
     web-routes,
     web-routes-th,
     web-routes-boomerang,
     boomerang
 
   if flag(development)
+    build-depends:
+      snap-loader-dynamic == 0.9.*
     cpp-options: -DDEVELOPMENT
     -- In development mode, speed is already going to suffer, so skip
     -- the fancy optimization flags.  Additionally, disable all
