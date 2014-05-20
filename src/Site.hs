@@ -7,13 +7,11 @@ module Site
 where
 
 import Data.ByteString (ByteString)
-import Control.Monad.Trans
 import Data.Monoid (mempty)
 import Snap.Core
 import Snap.Snaplet
 import Snap.Snaplet.Heist (heistInit,addConfig)
 import Heist (hcInterpretedSplices)
-import Data.Text (Text)
 import Heist.SpliceAPI ((##),Splices)
 import Heist.Interpreted (Splice,textSplice)
 import Snap.Util.FileServe (serveDirectory)

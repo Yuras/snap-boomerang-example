@@ -17,10 +17,8 @@ import qualified Data.Text.Encoding as T
 import Control.Category (id,(.))
 import Snap.Core
 import Text.Boomerang.TH (makeBoomerangs)
-import Text.XmlHtml hiding (render)
 import Snap.Snaplet.Heist (render, heistLocal)
 import Heist.Interpreted (bindString)
-import Heist.Compiled (textSplice,pureSplice)
 
 import Application
 import Web.Routes           (Site(..), RouteT(..), decodePathInfo, encodePathInfo, runSite)
@@ -56,9 +54,7 @@ site :: Site Sitemap (AppHandler ())
 site = boomerangSiteRouteT handle sitemap
 
 showUrl :: Sitemap -> Text
-showUrl url =
-  let (ps, params) = formatPathSegments site url
-  in (encodePathInfo ps params)
+showUrl= uncurry encodePathInfo . formatPathSegments site
 
 mkRoute :: AppHandler ()
 mkRoute = do
