@@ -12,9 +12,9 @@ import qualified Data.Text.Encoding as T
 import Control.Monad.Trans
 import Snap.Core
 import Snap.Snaplet
-import Snap.Snaplet.Heist (render, heistInit, heistLocal, addSplices)
+import Snap.Snaplet.Heist (render, heistInit, heistLocal)
 import Snap.Util.FileServe (serveDirectory)
-import Text.Templating.Heist (bindString)
+import Heist.Interpreted (bindString)
 
 import Application
 import Sitemap
@@ -23,7 +23,7 @@ routeSitemap :: Sitemap -> AppHandler ()
 routeSitemap Home = render "index"
 routeSitemap NewPost = heistLocal (bindString "post" $ showUrl $ Post "Very Interesting Post") $ render "new_post"
 routeSitemap (Post "") = redirectSM Home
-routeSitemap (Post pid) = writeText $ T.pack $ "Post: " ++ pid
+routeSitemap (Post pid) = writeText ("Post: " `T.append` pid)
 
 notFound :: MonadSnap m => m ()
 notFound = do
@@ -45,8 +45,4 @@ app = makeSnaplet "app" "An snaplet example application." Nothing $ do
     liftIO $ print $ heistUrl NewPost
     h <- nestSnaplet "heist" heist $ heistInit "templates"
     addRoutes routes
-    addSplices [
-      ("HomeR", return $ heistUrl Home),
-      ("NewPostR", return $ heistUrl NewPost)
-      ]
     return $ App h
