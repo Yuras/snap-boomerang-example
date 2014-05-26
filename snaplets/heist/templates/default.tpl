@@ -9,7 +9,7 @@
       <a href="${NewPostR}">New</a>
     </div>
     <div id="content">
-      <content/>
+      <apply-content />
     </div>
   </body>
 </html>

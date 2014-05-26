@@ -7,23 +7,17 @@ module Site
 where
 
 import Data.ByteString (ByteString)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import Control.Monad.Trans
+import Data.Monoid (mempty)
 import Snap.Core
 import Snap.Snaplet
-import Snap.Snaplet.Heist (render, heistInit, heistLocal, addSplices)
+import Snap.Snaplet.Heist (heistInit,addConfig)
+import Heist (hcInterpretedSplices)
+import Heist.SpliceAPI ((##),Splices)
+import Heist.Interpreted (Splice,textSplice)
 import Snap.Util.FileServe (serveDirectory)
-import Text.Templating.Heist (bindString)
 
 import Application
 import Sitemap
-
-routeSitemap :: Sitemap -> AppHandler ()
-routeSitemap Home = render "index"
-routeSitemap NewPost = heistLocal (bindString "post" $ showUrl $ Post "Very Interesting Post") $ render "new_post"
-routeSitemap (Post "") = redirectSM Home
-routeSitemap (Post pid) = writeText $ T.pack $ "Post: " ++ pid
 
 notFound :: MonadSnap m => m ()
 notFound = do
@@ -32,21 +26,19 @@ notFound = do
 
 routes :: [(ByteString, Handler App App ())]
 routes = [
-  ("", mkRoute routeSitemap),
+  ("", mkRoute),
   ("", serveDirectory "static"),
   ("", notFound)
   ]
 
-redirectSM :: MonadSnap m => Sitemap -> m ()
-redirectSM = redirect . T.encodeUtf8 . showUrl
-
 app :: SnapletInit App App
 app = makeSnaplet "app" "An snaplet example application." Nothing $ do
-    liftIO $ print $ heistUrl NewPost
     h <- nestSnaplet "heist" heist $ heistInit "templates"
     addRoutes routes
-    addSplices [
-      ("HomeR", return $ heistUrl Home),
-      ("NewPostR", return $ heistUrl NewPost)
-      ]
+    addConfig h $ mempty { hcInterpretedSplices = routeSplices }  
     return $ App h
+
+routeSplices :: Splices (Splice (Handler App App))
+routeSplices = do
+  "HomeR" ## textSplice $ showUrl Home
+  "NewPostR" ## textSplice $ showUrl NewPost

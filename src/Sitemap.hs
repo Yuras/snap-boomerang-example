@@ -1,55 +1,63 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Sitemap
 where
 
-import Prelude hiding ((.))
-import Data.Maybe
+import Prelude hiding (id,(.))
+
+import Control.Applicative ((<$>))
+import Control.Monad.Trans  (lift)
+import Data.Monoid (mconcat)
 import qualified Data.ByteString.Char8 as B
 import Data.Text (Text)
 import qualified Data.Text as T
-import Control.Category ((.))
+import qualified Data.Text.Encoding as T
+import Control.Category (id,(.))
 import Snap.Core
-import Web.Routes (decodePathInfo, encodePathInfo)
-import Web.Routes.TH (derivePathInfo)
-import Web.Routes.Boomerang (Router, (<>), (</>), anyString, parseStrings, unparseStrings)
-import Text.Boomerang.TH (derivePrinterParsers)
-import Text.XmlHtml hiding (render)
+import Text.Boomerang.TH (makeBoomerangs)
+import Snap.Snaplet.Heist (render, heistLocal)
+import Heist.Interpreted (bindString)
 
-data Sitemap =
-  Home |
-  NewPost |
-  Post String
-$(derivePathInfo ''Sitemap)
-$(derivePrinterParsers ''Sitemap)
+import Application
+import Web.Routes           (Site(..), RouteT(..), decodePathInfo, encodePathInfo, runSite)
+import Web.Routes.Boomerang ((</>),anyText,boomerangSiteRouteT)
 
-sitemap :: Router Sitemap
-sitemap =
-  (
-  rHome <>
-  "post" </> (
-    "new" . rNewPost <>
-    "show" . rPost </> anyString
-    )
-  )
+data Sitemap 
+  = Home 
+  | NewPost 
+  |  Post Text
+  deriving (Eq,Show)
+makeBoomerangs ''Sitemap
+
+sitemap = mconcat 
+  [ rHome 
+  , "post" </> mconcat 
+    [ "new" . rNewPost 
+    , "show" . rPost </> anyText
+    ]
+  ]
+
+handle :: Sitemap -> RouteT Sitemap AppHandler ()
+handle url = lift $ 
+  case url of
+    Home     -> render "index"
+    NewPost  -> heistLocal (bindString "post" $ showUrl $ Post "Very Interesting Post") $ render "new_post"
+    Post ""  -> redirectSM Home
+    Post pid -> writeText ("Post: " `T.append` pid)
+
+redirectSM :: MonadSnap m => Sitemap -> m ()
+redirectSM = redirect . T.encodeUtf8 . showUrl
+
+site :: Site Sitemap (AppHandler ())
+site = boomerangSiteRouteT handle sitemap
 
 showUrl :: Sitemap -> Text
-showUrl = addSlash . flip encodePathInfo [] . map T.pack . fromJust . unparseStrings sitemap
-  where
-  addSlash txt | T.null txt = "/" `T.append` txt
-  addSlash txt = txt
+showUrl= uncurry encodePathInfo . formatPathSegments site
 
-heistUrl :: Sitemap -> [Node]
-heistUrl = return . TextNode . showUrl
+mkRoute :: AppHandler ()
+mkRoute = do
+  pps <- (decodePathInfo . B.dropWhile (== '/') . rqPathInfo) <$> getRequest
+  either (const pass) id $ runSite "" site pps 
 
-mkRoute :: MonadSnap m => (Sitemap -> m ()) -> m ()
-mkRoute router = do
-  rq <- getRequest
-  case parseStrings sitemap $ map T.unpack $ decodePathInfo $ dropSlash $ rqPathInfo rq of
-    Left _ -> pass
-    Right url -> router url
-  where
-  dropSlash s = if ((B.pack "/") `B.isPrefixOf` s) 
-                  then B.tail s
-                  else s
